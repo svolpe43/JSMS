@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Mine Sweeper</title>
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+	<script src="/cookie/jquery.cookie.js"></script>
+	<script src="ms.js"></script>
+	<link href="ms.css" rel="stylesheet"/>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap-theme.min.css">
+</head>
+
+<body>
+	<div id="wrapper">
+		<div id="title">
+			<h2>Mine Sweeper</h2>
+			<p>View the code on <a href="https://github.com/svolpe43/GameOfLife">Github</a>.<br>
+			Based on <a href="http://en.wikipedia.org/wiki/Minesweeper_%28video_game%29">the Windows Mine Sweeper.</a></p>
+		</div>
+		<div id="content">
+			<div id="settings">
+				<p>Rules of the Game</p>
+				<ul>
+					<li>Click on a tile to expose it.</li>
+					<li>If you expose a bomb it will blow up and you lose.</li>
+					<li>Determine if a tile is a bomb and flag it as a bomb.</li>
+					<li>Once you flag all of the bombs the game is over.</li>
+				</ul><hr>
+			</div>
+			<div id="canvas-div">
+				<span id="bombcount"></span><p>Use the space bar to flag and unflag mines.</p>
+				<canvas id="discanvas" width="628" height="628"></canvas>
+				<div id="controls">
+					<button class="btn" id="start" onclick="reset(1)">Easy</button>
+					<button class="btn" id="start" onclick="reset(2)">Medium</button>
+					<button class="btn" id="start" onclick="reset(3)">Hard</button>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
