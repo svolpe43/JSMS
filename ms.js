@@ -11,6 +11,8 @@ var hard = 3;
 
 var boardDimWithoutLines = 600;
 var lineWidth = 1;
+var delta = 1000;
+var BOMB_TIME = 0;
 
 var canvas;
 var context;
@@ -20,8 +22,22 @@ var DIM;
 var lineOffset;
 var boardDimWithLines;
 var mouse;
-var bombcount;
+var interval;
+var score;
+var scorespan;
+var secondspan;
+var minutespan;
+var running;
+var difficulty;
+
+// time
+var seconds;
+var lastblowup;
+
+var bombs = [];
 var bombcountspan;
+var bombcount;
+var flags;
 
 $(document).ready(function(){
 	canvas = document.getElementById("discanvas");
@@ -32,10 +48,14 @@ $(document).ready(function(){
 	$(document).bind('keyup', 'space', spaceUp);
 
 	bombcountspan = $("#bombcount");
+	scorespan = $("#score");
+	secondspan = $("#seconds");
+	minutespan = $("#minutes")
 
 	context = canvas.getContext("2d");
 	context.lineWidth = lineWidth;
-	reset(2);
+	setDifficulty(2);
+	reset();
 });
 
 // static function to initialize an array
@@ -57,6 +77,11 @@ function Mouse(){
 	this.y = 0;
 }
 
+function Point(x, y){
+	this.x = x;
+	this.y = y;
+}
+
 // tile object
 function Tile(){
 	this.isBomb = false;
@@ -64,8 +89,66 @@ function Tile(){
 	this.state = idle;
 }
 
+function start(){
+	if(!running){
+		console.log("Starting...");
+		reset(difficulty);
+		interval = setInterval(step, delta);
+		running = true;
+		lastblowup = new Date().getTime();
+		seconds = 0;
+	}
+}
+
+function stop(){
+	if(running){
+		console.log("Stopping...");
+		clearInterval(interval);
+		running = false;
+	}
+}
+
+function step(){
+	var currenttime = new Date().getTime();
+	if(currenttime > lastblowup + BOMB_TIME){
+		blowupbomb();
+		lastblowup = new Date().getTime();
+	}
+	updateTime();
+}
+
+function blowupbomb(){
+	if(bombcount > -1){
+		var rand = Math.floor(Math.random() * bombcount);
+		console.log(rand);
+		bomb = bombs[rand];
+		console.log(bomb);
+		for(var i = -1; i < 2; i++){
+			for(var j = -1; j < 2; j++){
+				if(bomb.x + i < 0 || bomb.y + j < 0 || bomb.x + i > DIM - 1 || bomb.y + j > DIM - 1)
+					continue;
+				if(board[bomb.x + i][bomb.y + j].state == idle)
+					board[bomb.x + i][bomb.y + j].state = exposed;
+			}
+		}
+		flags--;
+		bombcount--;
+		draw();
+	}
+}
+
+function updateTime(){
+	seconds++;
+	secondspan.html("Time: " + seconds + " secs");
+}
+
+function setDifficulty(diff){
+	difficulty = diff;
+	reset();
+}
+
 // called to reset everything basically
-function reset(difficulty){
+function reset(){
 	switch(difficulty){
 		case(easy):
 			cellDim = 60;
@@ -80,6 +163,9 @@ function reset(difficulty){
 			density = 20;
 			break;
 	}
+
+	bombcount = 0;
+	score = 0;
 
 	updateSettings();
 	randomize();
@@ -100,56 +186,62 @@ function updateSettings(){
 // original uses set number of bombs and performs normal distribution
 function randomize(){
 	board = Array.matrix(DIM, DIM);
-	bombcount = 0;
 	for(var i = 0; i < DIM; i++){
 		for(var j = 0; j < DIM; j++){
 			if(Math.random() < density/100){
 				board[i][j].isBomb = true;
+				bombs[bombcount] = new Point(i, j);
 				bombcount++;
 			}
 		}
 	}
-	bombcountspan.html("Bombs left: " + bombcount);
+	bombcountspan.html("Flags left: " + bombcount + "     ");
 	countSurroundings();
 }
 
 // called when space is unpressed
 function spaceUp(event){
-	x = getTile(mouse, false);
-	y = getTile(mouse, true);
-	if(board[x][y].state != exposed){
-		if(board[x][y].state == flagged){
-			board[x][y].state = idle;
-			bombcount++;
-		}else{
-			board[x][y].state = flagged;
-			bombcount--;
+	if(running){
+		x = getTile(mouse, false);
+		y = getTile(mouse, true);
+		if(board[x][y].state != exposed || bombcount <= 0){
+			if(board[x][y].state == flagged){
+				board[x][y].state = idle;
+				bombcount++;
+			}else{
+				board[x][y].state = flagged;
+				bombcount--;
+			}
 		}
-	}
 
-	bombcountspan.html(bombcount);
-	draw();
+		bombcountspan.html(bombcount);
+		draw();
+	}
 }
 
 // called when mouse is moved
 function mouseMove(event){
-	mouse.x = event.x;
-	mouse.y = event.y;
+	if(running){
+		mouse.x = event.x;
+		mouse.y = event.y;
+	}
 }
 
 // called when mouse is pressed
 function mouseDown(event){
-	x = getTile(event, false);
-	y = getTile(event, true);
+	if(running){
+		x = getTile(event, false);
+		y = getTile(event, true);
 
-	if(board[x][y].state == idle){
-		if(board[x][y].isBomb){
-			gameover();
-		}else{
-			exposeTile(x, y);
+		if(board[x][y].state == idle){
+			if(board[x][y].isBomb){
+				gameover();
+			}else{
+				exposeTile(x, y);
+			}
 		}
+		draw();
 	}
-	draw();
 }
 
 // get the specific tile that was clicked
@@ -177,10 +269,14 @@ function exposeTile(x, y){
 			}
 		}
 	}
+	score++;
+	scorespan.html("Score: " + score + "     ");
 }
 
 // called when game is over, exposes every bomb
 function gameover(){
+	running = false;
+	clearInterval(interval);
 	for(var i = 0; i < DIM; i++){
 		for(var j = 0; j < DIM; j++){
 			if(board[i][j].isBomb)
